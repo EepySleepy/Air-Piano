@@ -1,0 +1,71 @@
+import cv2
+import mediapipe as mp
+import time
+
+print('Initializing Hand Tracking Protocol...')
+time.sleep(.5)
+print('Beginning in...')
+time.sleep(.5)
+print("3...")
+time.sleep(.5)
+print("2...")
+time.sleep(.5)
+print("1...")
+time.sleep(.5)
+
+cap = cv2.VideoCapture(0)         #captures feed from camera device 0
+
+mpHands = mp.solutions.hands
+hands = mpHands.Hands()
+mpDraw = mp.solutions.drawing_utils
+
+pTime = 0
+cTime = 0
+
+while True:
+    success, img = cap.read()                        #image of camera
+    img = cv2.flip(img, 1)  # flipped image FIRST before addons/ cuz you want right hand on right side
+    imgRBG = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    results = hands.process(imgRBG)
+    #print(results.multi_hand_landmarks) prints out where the landmarks are
+
+    if results.multi_hand_landmarks:
+
+        for handLms in results.multi_hand_landmarks:
+            lmList = []
+            for id, lm in enumerate(handLms.landmark):
+                #print(id,lm)          #prints the coords of the individual landmarks percentage
+                h, w , c = img.shape   #gets the height width and center from img(camera) specs
+                cx, cy = int(lm.x*w), int(lm.y*h)
+                lmList.append([id, cx, cy])
+                #print(id, cx, cy) #prints the coords of the individual landmarks pixels
+                tipID = [4,8,12,16,20]
+
+                if id in tipID: # if an id is in this set (landmarks of tips) then light up
+                    cv2.circle(img, (cx,cy), 5, (255, 0 ,0), cv2.FILLED)
+                    #print(id, cx, cy)  #should print just the tip coords
+                if len(lmList) == 21:
+                    fingers =[]
+                    for fingerid in range(0,5):
+                        if lmList[tipID[fingerid]][2]< lmList[tipID[fingerid]-2][2]:
+                            fingers.append(1)
+                        else:
+                            fingers.append(0)
+                    print(fingers)
+
+
+    # mpDraw.draw_landmarks(img, handLms, mpHands.HAND_CONNECTIONS)     draws the connections
+    cTime = time.time()
+    fps = 1/(cTime-pTime)
+    pTime = cTime
+    print('\a')
+    cv2.putText(img, str(int(fps)), (10,70), cv2.FONT_ITALIC, 3, (255,0,255), 3)         #16:30 youtube tutorial
+
+
+    cv2.imshow("Hand Tracking", img)   #cv2 is my camera feed display
+    cv2.waitKey(1)
+
+    if cv2.waitKey(1) & 0xFF == ord('q'):  # if the key being pressed matches the ASCII of q
+        break                              #breaks the loop and then..
+cap.release()                 #cuts camera
+cv2.destroyAllWindows()       #destroys frames
